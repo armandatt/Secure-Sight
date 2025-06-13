@@ -11,7 +11,11 @@ const app = new Hono<{
   }
 }>();
 
-app.use("/*" , cors())
+app.use("/*" , cors({
+    origin: "*",
+    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+  }))
 app.route("/api/v1/user" , userRouter);
 app.route("/api/v1/verify" , VerifyRouter);
 
