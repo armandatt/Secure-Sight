@@ -12,6 +12,7 @@ import AdmZip from "adm-zip";
 import { Octokit } from "@octokit/rest";
 import { env } from "process";
 import { unzipSync, strFromU8 } from "fflate";
+import JSZip from "jszip";
 
 
 export const VerifyRouter = new Hono<{
@@ -78,14 +79,28 @@ VerifyRouter.use("getUserData", async (c) => {
     }
 });
 
-async function extractZipFromUrl(zipUrl: string) {
-    const zipResponse = await fetch(zipUrl);
-    if (!zipResponse.ok) {
-        throw new Error(`Failed to fetch ZIP: ${zipResponse.statusText}`);
-    }
 
-    const arrayBuffer = await zipResponse.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
+
+// This handles both URL and Buffer-based ZIPs
+export async function extractZipFromUrlOrBuffer(input: string | Uint8Array) {
+    let uint8Array: Uint8Array;
+
+    // Case 1: URL string — fetch from GitHub
+    if (typeof input === "string") {
+        const zipResponse = await fetch(input);
+        if (!zipResponse.ok) {
+            throw new Error(`Failed to fetch ZIP: ${zipResponse.statusText}`);
+        }
+
+        const arrayBuffer = await zipResponse.arrayBuffer();
+        uint8Array = new Uint8Array(arrayBuffer);
+    }
+    // Case 2: Already a buffer (manually zipped from Octokit files)
+    else if (input instanceof Uint8Array) {
+        uint8Array = input;
+    } else {
+        throw new Error("Invalid ZIP input: must be a URL string or Uint8Array buffer");
+    }
 
     const zipEntries = unzipSync(uint8Array);
     const filenames = Object.keys(zipEntries);
@@ -103,37 +118,44 @@ async function extractZipFromUrl(zipUrl: string) {
         const lowerName = filename.toLowerCase();
 
         try {
+            // Detect README (once)
             if (lowerName.includes("readme") && lowerName.endsWith(".md") && readmeText === "") {
                 readmeText = strFromU8(file, true);
-                console.log(`Found README: ${filename}`);
+                console.log(`✅ Found README: ${filename}`);
             }
 
             const extMatch = lowerName.match(/\.(\w+)$/);
             if (extMatch) {
                 const ext = extMatch[1];
-                if (["js", "ts", "py", "rs", "java", "cpp", "cs", "go", "rb", "php"].includes(ext)) {
+                const validExts = ["js", "ts", "py", "rs", "java", "cpp", "cs", "go", "rb", "php"];
+                if (validExts.includes(ext)) {
                     const content = strFromU8(file, true);
                     codeText += `\n\n// ${filename}\n${content}`;
-                    if (!detectedExtensions.includes(ext)) detectedExtensions.push(ext);
+                    if (!detectedExtensions.includes(ext)) {
+                        detectedExtensions.push(ext);
+                    }
                 }
             }
         } catch (e) {
-            console.warn(`Failed to decode ${filename}:`, e);
+            console.warn(`❌ Failed to decode ${filename}:`, e);
         }
     }
 
-    if (readmeText === "" && codeText === "") {
+    if (!readmeText && !codeText) {
         throw new Error("No README or code files found in the ZIP.");
     }
 
     return { readmeText, codeText, detectedExtensions };
 }
 
-VerifyRouter.post('/verifyWebsite', async (c) => {
 
+VerifyRouter.post('/verifyWebsite', async (c) => {
     const prisma = new PrismaClient({
         datasourceUrl: c.env.DATABASE_URL,
-    }).$extends(withAccelerate())
+    }).$extends(withAccelerate());
+
+    const GitHub_Url = c.env.GitHub_URL;
+    const octokit = new Octokit({ auth: GitHub_Url });
 
     console.log("Request received at /verifyWebsite");
 
@@ -145,43 +167,232 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
         repoUrl = "";
     }
 
-    console.log("Received repo URL:", repoUrl);
-
     const link = typeof repoUrl === "string" ? repoUrl.trim() : repoUrl;
+    const regex = /github\.com\/([^/]+)\/([^/]+)/;
+    const match = link.match(regex);
+    if (!match) return new Response("Invalid GitHub URL", { status: 400 });
 
-    const regex = /github\.com\/([^/]+)\/([^/]+)/
-    const match = link.match(regex)
-    console.log("Received repo link:", link);
+    const owner = match[1];
+    const repo = match[2];
 
-    if (!match) return new Response("Invalid GitHub URL", { status: 400 })
+    async function getRepoFileStructure(owner: string, repo: string) {
+        const branchData = await octokit.repos.get({ owner, repo });
+        const defaultBranch = branchData.data.default_branch;
 
-    const GitHub_Url = c.env.GitHub_URL;
-    console.log("GitHub URL from environment:", GitHub_Url);
-    const octokit = new Octokit({ auth: GitHub_Url });
+        const branchDetails = await octokit.repos.getBranch({
+            owner,
+            repo,
+            branch: defaultBranch,
+        });
 
-    const owner = match[1]
-    const repo = match[2]
+        const treeSha = branchDetails.data.commit.sha;
+
+        const fileTree = await octokit.git.getTree({
+            owner,
+            repo,
+            tree_sha: treeSha,
+            recursive: "1",
+        });
+
+        const allFiles = fileTree.data.tree.filter((item) => item.type === "blob");
+
+        return allFiles.map((file) => file.path);
+    }
+
+    async function fetchFileSnippet(owner: string, repo: string, path: string): Promise<string> {
+        try {
+            const res = await octokit.repos.getContent({ owner, repo, path });
+            const fileData = res.data as any;
+
+            if (Array.isArray(fileData) || !fileData.content) return "";
+
+            const content = Buffer.from(fileData.content, "base64").toString("utf-8");
+            const lines = content.split("\n");
+
+            // Extract lines 20–45 if available
+            const snippet = lines.slice(19, 45).join("\n");
+
+            return snippet;
+        } catch (err) {
+            console.warn(`Failed to fetch or decode snippet for ${path}:`, err);
+            return "";
+        }
+    }
+
+    const CODE_EXTENSIONS = ["py", "js", "ts", "cpp", "java", "go", "rb", "cs"];
+    function isCodeFile(path: string): boolean {
+        return CODE_EXTENSIONS.some((ext) => path.endsWith("." + ext));
+    }
+
+    async function getCodeSnippetsForGemini(owner: string, repo: string) {
+        const MAX_TOTAL_SNIPPET_CHARS = 4000;
+        const MAX_FILES = 12;
+
+        const allPaths = await getRepoFileStructure(owner, repo);
+        const logicFileSnippets: { [filename: string]: string } = {};
+
+        let totalChars = 0;
+        let fileCount = 0;
+
+        for (const path of allPaths) {
+            if (!isCodeFile(path)) continue;
+            if (fileCount >= MAX_FILES || totalChars >= MAX_TOTAL_SNIPPET_CHARS) break;
+
+            const snippet = await fetchFileSnippet(owner, repo, path);
+            const trimmed = snippet.trim();
+            if (trimmed.length < 10) continue;
+
+            if ((totalChars + trimmed.length) > MAX_TOTAL_SNIPPET_CHARS) break;
+
+            logicFileSnippets[path] = trimmed;
+            totalChars += trimmed.length;
+            fileCount += 1;
+        }
+
+        return logicFileSnippets;
+    }
+
+
+    // 👇 CALL THIS FIRST
+    const logicFileSnippets = await getCodeSnippetsForGemini(owner, repo);
+
+    // 🧠 Then prepare the prompt for Gemini
+    let prompt = `These are code snippets from a GitHub repo. Identify only the important core logic files (ignore UI, boilerplate, setup):\n\n`;
+    for (const [filename, snippet] of Object.entries(logicFileSnippets)) {
+        const snippetBlock = `// ${filename}\n${snippet}\n\n`;
+        if ((prompt.length + snippetBlock.length) > 12000) break;
+
+        prompt += `// ${filename}\n${snippet}\n\n`;
+    }
+
+    const llm_important_files = await axios.post(`${api_url}`, {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+            temperature: 0.2,
+            topK: 1,
+            topP: 0.1,
+            maxOutputTokens: 512,
+        }
+    }, {
+        headers: { "Content-Type": "application/json" }
+    });
+
+    const geminiReply = llm_important_files.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    // 🧾 Extract file names
+    const detectedFiles: string[] = [];
+    const fileLines = geminiReply.split("\n");
+
+    for (const line of fileLines) {
+        CODE_EXTENSIONS.forEach((ext) => {
+            if (line.includes("." + ext)) {
+                const clean = line.match(/[\w\/\-.]+\.[\w]+/)?.[0];
+                if (clean && !detectedFiles.includes(clean)) detectedFiles.push(clean);
+            }
+        });
+    }
+
+    const importantLogicFiles = detectedFiles;
+    const originalPrompt = prompt;
+    const geminiRawOutput = geminiReply;
+
+    console.log("Important logic files detected:", importantLogicFiles);
+    if (importantLogicFiles.length === 0) {
+        return c.json({ error: "No important logic files detected." }, 404);
+    }
+    console.log("Original prompt sent to Gemini:", originalPrompt);
+    console.log("Gemini raw output:", geminiRawOutput);
+
+
     const repoInfo = await octokit.repos.get({ owner, repo });
     const branch = repoInfo.data.default_branch;
 
-    const zipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/${branch}.zip`
 
-    let extractedContent;
-    try {
-        extractedContent = await extractZipFromUrl(zipUrl);
-    } catch (error) {
-        console.error("Extraction failed:", error);
-        return c.text("Failed to extract ZIP content: ", 400);
+
+    // 2. helper function: createCustomZipFromRepo
+    async function createCustomZipFromRepo(owner: string, repo: string, branch = "main") {
+        const zip = new JSZip();
+        const MAX_FILES = 20;
+        const MAX_TOTAL_CONTENT_SIZE = 30000; // 30 KB
+
+        const { data: refData } = await octokit.rest.git.getRef({
+            owner,
+            repo,
+            ref: `heads/${branch}`,
+        });
+
+        const commitSha = refData.object.sha;
+        const { data: treeData } = await octokit.rest.git.getTree({
+            owner,
+            repo,
+            tree_sha: commitSha,
+            recursive: "true",
+        });
+
+        const filesToInclude = treeData.tree.filter(file =>
+            file.type === "blob" &&
+            (
+                file.path.toLowerCase().includes("readme") ||
+                /\.(js|ts|py|rs|java|cpp|cs|go|rb|php)$/i.test(file.path)
+            )
+        );
+
+        let totalSize = 0;
+        let addedFiles = 0;
+
+        for (const file of filesToInclude) {
+            if (addedFiles >= MAX_FILES || totalSize >= MAX_TOTAL_CONTENT_SIZE) break;
+
+            const { data: blob } = await octokit.rest.git.getBlob({
+                owner,
+                repo,
+                file_sha: file.sha!,
+            });
+
+            const content = Buffer.from(blob.content, "base64").toString("utf-8");
+
+            if ((totalSize + content.length) > MAX_TOTAL_CONTENT_SIZE) break;
+
+            zip.file(file.path!, content);
+            totalSize += content.length;
+            addedFiles += 1;
+        }
+
+        return await zip.generateAsync({ type: "uint8array" });
     }
 
-    type ExtractedContent = {
-        readmeText: string;
-        codeText: string;
-        detectedExtensions: string[];
-    };
-    const zipContent: ExtractedContent = extractedContent as ExtractedContent;
 
-    let { readmeText, codeText, detectedExtensions } = zipContent;
+    // 3. main handler: handleRepoAnalysis
+    async function handleRepoAnalysis(owner: string, repo: string, branch = "main") {
+        try {
+            // Try minimal ZIP
+            const customZipBuffer = await createCustomZipFromRepo(owner, repo, branch);
+            const { readmeText, codeText, detectedExtensions } = await extractZipFromUrlOrBuffer(customZipBuffer);
+
+            return {
+                source: "custom-buffer",
+                readmeText,
+                codeText,
+                detectedExtensions,
+            };
+        } catch (err) {
+            console.warn("⚠️ Custom zipping failed, falling back to full repo ZIP", err);
+
+            const fallbackZipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/${branch}.zip`;
+            const { readmeText, codeText, detectedExtensions } = await extractZipFromUrlOrBuffer(fallbackZipUrl);
+
+            return {
+                source: "fallback-zip-url",
+                readmeText,
+                codeText,
+                detectedExtensions,
+            };
+        }
+    }
+
+    const extractedContent = await handleRepoAnalysis(owner, repo, branch);
+    let { readmeText, codeText, detectedExtensions } = extractedContent;
+
 
     if (!codeText.trim()) {
         codeText = "// No source code found in the uploaded ZIP.";
@@ -196,11 +407,17 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
 
         Now extract keywords from the following README:\n\n${readmeText.slice(0, 2000)}`;
 
-    const llm = await axios.post(
-        api_url,
-        { contents: [{ parts: [{ text: prompt1 }] }] },
-        { headers: { "Content-Type": "application/json" } }
-    );
+    const llm = await axios.post(api_url, {
+        contents: [{ parts: [{ text: prompt1 }] }],
+        generationConfig: {
+            temperature: 0.2,
+            topK: 1,
+            topP: 0.1,
+            maxOutputTokens: 512
+        }
+    }, {
+        headers: { "Content-Type": "application/json" }
+    });
 
     const aiAnalysis = llm.data || "Unknown";
     const text_content = aiAnalysis.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -236,32 +453,60 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
     }
 
     let similarReadmeText = ""
-    let similarCodeText = ""
+    let similarCodeText = "";
     const similarRepos = await findSimilarRepos()
 
     if (similarRepos.length === 0) return c.json({ error: "No similar repositories found." }, 404);
 
-    for (const repo of similarRepos) {
-        const simOwner = repo.owner?.login || "";
-        const simRepo = repo.name;
+    for (const similar of similarRepos) {
+        const simOwner = similar.owner?.login || "";
+        const simRepo = similar.name;
 
         try {
             similarReadmeText = await fetchFileContentFromGitHub(simOwner, simRepo, "README.md");
         } catch { }
 
         try {
-            const repoContent = await octokit.repos.getContent({ owner: simOwner, repo: simRepo, path: "" });
-            const fileTree = repoContent.data as any[];
 
-            for (const file of fileTree) {
-                const fname = file.name.toLowerCase();
-                if (detectedExtensions.some(ext => fname.endsWith("." + ext))) {
-                    try {
-                        similarCodeText = await fetchFileContentFromGitHub(simOwner, simRepo, file.path);
-                        if (similarCodeText.length > 100) break;
-                    } catch { }
-                }
+            const MAX_SIMILAR_CODE_CHARS = 1500;
+
+            function isImportantFile(name: string): boolean {
+                return /main|app|index|server/i.test(name);
             }
+
+            try {
+                const repoContent = await octokit.repos.getContent({ owner: simOwner, repo: simRepo, path: "" });
+                let fileTree = repoContent.data as any[];
+
+                // Optional: prioritize important filenames first
+                fileTree = fileTree.sort((a, b) => {
+                    const aImp = isImportantFile(a.name) ? -1 : 1;
+                    const bImp = isImportantFile(b.name) ? -1 : 1;
+                    return aImp - bImp;
+                });
+
+                for (const file of fileTree) {
+                    const fname = file.name.toLowerCase();
+
+                    if (
+                        detectedExtensions.some(ext => fname.endsWith("." + ext)) &&
+                        similarCodeText.length < MAX_SIMILAR_CODE_CHARS
+                    ) {
+                        try {
+                            const fileText = await fetchFileContentFromGitHub(simOwner, simRepo, file.path);
+                            if (fileText.length > 100) {
+                                const remaining = MAX_SIMILAR_CODE_CHARS - similarCodeText.length;
+                                similarCodeText += "\n" + fileText.slice(0, remaining);
+                            }
+                        } catch { /* ignore single file errors */ }
+                    }
+
+                    if (similarCodeText.length >= MAX_SIMILAR_CODE_CHARS) break;
+                }
+            } catch { /* ignore repo errors */ }
+
+            similarCodeText = similarCodeText.slice(0, MAX_SIMILAR_CODE_CHARS);
+
         } catch { }
 
         if (similarReadmeText && similarCodeText) break;
@@ -286,8 +531,17 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
 
     const geminiCompare = await axios.post(
         api_url,
-        { contents: [{ parts: [{ text: comparisonPrompt }] }] },
-        { headers: { "Content-Type": "application/json" } }
+        {
+            contents: [{ parts: [{ text: comparisonPrompt }] }],
+            generationConfig: {
+                temperature: 0.2,
+                topK: 1,
+                topP: 0.1,
+                maxOutputTokens: 512
+            }
+        },
+        { headers: { "Content-Type": "application/json" } },
+
     );
 
     const result = geminiCompare.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
