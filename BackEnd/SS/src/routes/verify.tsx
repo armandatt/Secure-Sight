@@ -36,6 +36,17 @@ const search_id = "b6120d91992ae4fa8";
 
 dotenv.config();
 
+VerifyRouter.options('/verifyWebsite', (c) => {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+});
+
 
 
 
@@ -366,10 +377,6 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
             hasRandomVariableNames,
             matchedContent,
             summary
-        },
-        headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
         }
     });
 })
