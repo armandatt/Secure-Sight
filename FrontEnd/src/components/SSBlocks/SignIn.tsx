@@ -63,6 +63,7 @@ const SignIn = () => {
         }, 1500)
       }
     } catch (error) {
+      alert("Error Signing In!\nPlease check your credentials and try again."),
       <Alert variant="destructive">
                 <Terminal />
                 <AlertTitle>Error Signing Up!</AlertTitle>

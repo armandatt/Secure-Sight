@@ -45,6 +45,7 @@ const SignUp = () => {
 
 
         } catch (error) {
+            alert("Error Signing Up!\nPlease check your credentials and try again."),
             <Alert variant="destructive">
                 <Terminal />
                 <AlertTitle>Error Signing Up!</AlertTitle>
