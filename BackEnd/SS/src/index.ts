@@ -11,13 +11,14 @@ const app = new Hono<{
   }
 }>();
 
+
 app.use('/*', cors({
-  origin: 'https://secure-sight-git-master-armandatts-projects.vercel.app/',
-  credentials: true,
-  maxAge: 3600, // Cache preflight response for 1 hour
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'Accept', 'Origin', 'Referer', 'User-Agent', 'Cache-Control'],
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
+  origin: '*',
+  allowHeaders: ['*'],
+  allowMethods: ['*'],
+  credentials: true
 }))
+
 app.route("/api/v1/user" , userRouter);
 app.route("/api/v1/verify" , VerifyRouter);
 
