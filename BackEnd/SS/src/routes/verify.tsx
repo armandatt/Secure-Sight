@@ -36,20 +36,6 @@ const search_id = "b6120d91992ae4fa8";
 
 dotenv.config();
 
-VerifyRouter.options('/verifyWebsite', (c) => {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
-});
-
-
-
-
 VerifyRouter.use("/*", async (c, next) => {
     const header = await c.req.header('authorization') || "";
     const user = await verify(header, c.env.JWT_SECRET)
