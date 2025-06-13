@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Github } from "lucide-react"
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast"
 
 export default function Navbar() {
 

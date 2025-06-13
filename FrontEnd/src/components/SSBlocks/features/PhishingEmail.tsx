@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { Mail, ArrowLeft, Upload, AlertTriangle, Shield, X } from "lucide-react"
+import { Mail, ArrowLeft,  AlertTriangle, Shield, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"

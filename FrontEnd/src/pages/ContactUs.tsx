@@ -10,10 +10,8 @@ import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { Card, CardContent } from "../components/ui/card"
 import { Mail, Phone, MapPin, MessageSquare, CheckCircle } from "lucide-react"
-import { useToast } from "../hooks/use-toast"
 
 export default function ContactPage() {
-  const { toast } = useToast()
   const [formState, setFormState] = useState({
     name: "",
     email: "",
@@ -34,11 +32,7 @@ export default function ContactPage() {
     // Simulate form submission
     setTimeout(() => {
       setIsSubmitting(false)
-      toast({
-        title: "Message sent!",
-        description: "We'll get back to you as soon as possible.",
-        variant: "default",
-      })
+      
       setFormState({
         name: "",
         email: "",
