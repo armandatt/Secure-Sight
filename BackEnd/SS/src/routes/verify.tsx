@@ -66,7 +66,7 @@ VerifyRouter.use("getUserData", async (c) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userID },
-            select: { id: true, name: true,  username: true}
+            select: { id: true, name: true, username: true }
         });
         console.log("Fetched user data:", user);
 
@@ -366,6 +366,10 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
             hasRandomVariableNames,
             matchedContent,
             summary
+        },
+        headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
         }
     });
 })
@@ -466,7 +470,11 @@ VerifyRouter.post('/verifyEmail', async (c) => {
                 linkAnalysis,
                 riskPercentageValue
             },
-            GoogleSafeBrowsing: googleApiResponce
+            GoogleSafeBrowsing: googleApiResponce,
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            }
         });
 
 
@@ -620,12 +628,16 @@ VerifyRouter.post('/verifyAiGeneratedContent', async (c) => {
         return c.json({
             AiTextAnalysis: {
                 is_ai_generated: is_ai_generated,
-                Confidence : confidence,
+                Confidence: confidence,
                 // relativeConfidence: -relativeCondifence,
                 reason: reason,
                 humanContent: humanContent,
                 humanContentConfidence: humanContentConfidence,
                 humanContentReason: humanContentReason
+            },
+            headers: {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
             }
 
         });
