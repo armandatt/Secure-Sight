@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User{
+  id String    @id @default(uuid())
+  name String?
+  username String @unique
+  password String 
+  user_document  document_report[]
+}
+
+model document_report{
+  id String @id @default(uuid())
+  user User  @relation(fields: [userId] , references: [id])
+  userId String
+  document_name String
+  extracted_text String
+  ai_detection_result String
+  plagarism_score Int
+  created_at DateTime @default(now())
+}
+
+model malicious_links{
+  id String @id @default(uuid())
+  url String @unique 
+  threat_type String
+  created_at DateTime @default(now())
+
+}
+
+
+model fake_documents{
+  id String @id @default(uuid())
+  document_name String @unique
+  reason String
+  created_at DateTime @default(now())
+}
+
+model RepoAnalysis {
+  id           String   @id @default(cuid())
+  repoUrl      String
+  readmeText   String
+  codeText     String
+  similarityScore Float? 
+  createdAt    DateTime @default(now())
+}
