@@ -175,7 +175,7 @@ const VerifyWebsites = () => {
                           )}
 
                       <div className="flex items-center gap-2 rounded-full bg-red-500/20 px-3 py-1 text-sm text-red-500">
-                                <span>High Risk</span>
+                                <span>Risk</span>
                                 
                                 <span className="font-bold">{PlagiarismAnalysis?.AdjustedRisk}%</span>
                               </div>
