@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu"
 import { Badge } from "../components/ui/badge"
-import { use, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import axios from "axios"
 import { BACKEND_URL } from "@/config"
 import { useNavigate } from "react-router-dom"
