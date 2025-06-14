@@ -1,34 +1,24 @@
-import { Link , useNavigate} from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { Github , Menu} from "lucide-react"
+import { Github, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useState } from "react"
 
-
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const navigate = useNavigate() 
 
   function isAuthenticated() {
-    const token = localStorage.getItem("token");
-    if (token) {
-      return true
-    } else {
-      return false
-    }
+    const token = localStorage.getItem("token")
+    return !!token
   }
 
-  function handleLogout(){
-    const navigate = useNavigate();
-
-    localStorage.removeItem("token");
-    setTimeout(() => {
-      navigate("/sign-in");
-    }, 1500)
-    // location.window.href("localhost:5173");
-    // navigate("localhost:5173");
-
+  function handleLogout() {
+    localStorage.removeItem("token")
+    navigate("/sign-in") 
   }
-const closeSheet = () => setIsOpen(false)
+
+  const closeSheet = () => setIsOpen(false)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
