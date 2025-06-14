@@ -20,7 +20,7 @@ export default function Navbar() {
     localStorage.removeItem("token");
     // Redirect after a short delay to show the toast
     setTimeout(() => {
-      navigate("https://secure-sight-armandatts-projects.vercel.app/sign-in");
+      navigate("/sign-in");
     }, 1500)
     // location.window.href("localhost:5173");
     // navigate("localhost:5173");

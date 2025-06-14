@@ -106,7 +106,7 @@ const Dashboard = () => {
   const handleLogout = () => {
   localStorage.removeItem('token');
   setUser(null); // This clears the user state
-  navigate("https://secure-sight-armandatts-projects.vercel.app/sign-in")// Or use `navigate("/signin")` if using React Router
+  navigate("/sign-in")// Or use `navigate("/signin")` if using React Router
 };
 
   return (
