@@ -90,7 +90,7 @@ export default function SolutionsPage() {
 
               { isAuthenitcated() ? (
                 <Button asChild className="w-full">
-                  <Link to={`https://secure-sight-armandatts-projects.vercel.app/${feature.route}`}>
+                  <Link to={`/${feature.route}`}>
                     Launch Tool
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
