@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom"
+import { Link , useNavigate} from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Github } from "lucide-react"
+
 
 export default function Navbar() {
 
@@ -14,12 +15,12 @@ export default function Navbar() {
   }
 
   function handleLogout(){
-    // const navigate = useNavigate();
+    const navigate = useNavigate();
 
     localStorage.removeItem("token");
     // Redirect after a short delay to show the toast
     setTimeout(() => {
-      window.location.href = "/sign-in";
+      navigate("https://secure-sight-armandatts-projects.vercel.app/sign-in");
     }, 1500)
     // location.window.href("localhost:5173");
     // navigate("localhost:5173");

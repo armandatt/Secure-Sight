@@ -29,9 +29,10 @@ import {
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu"
 import { Badge } from "../components/ui/badge"
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import axios from "axios"
 import { BACKEND_URL } from "@/config"
+import { useNavigate } from "react-router-dom"
 
 const Dashboard = () => {
   const [user, setUser] = useState<{ name: string; username: string } | null>(null)
@@ -101,10 +102,11 @@ const Dashboard = () => {
     return "Good evening"
   }
 
+  const navigate = useNavigate()
   const handleLogout = () => {
   localStorage.removeItem('token');
   setUser(null); // This clears the user state
-  window.location.href = '/sign-in'; // Or use `navigate("/signin")` if using React Router
+  navigate("https://secure-sight-armandatts-projects.vercel.app/sign-in")// Or use `navigate("/signin")` if using React Router
 };
 
   return (
