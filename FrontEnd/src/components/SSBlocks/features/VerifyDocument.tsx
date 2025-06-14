@@ -307,7 +307,7 @@ const VerifyDocuments = () => {
       </main>
 
       <footer className="border-t border-gray-800 py-6 text-center text-sm text-gray-400">
-        <p>© 2025 Amane Soft. All rights reserved.</p>
+        <p>© 2025 SecureSight. All rights reserved.</p>
       </footer>
     </div>
   )
