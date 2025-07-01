@@ -121,7 +121,7 @@ export async function extractZipFromUrlOrBuffer(input: string | Uint8Array) {
             // Detect README (once)
             if (lowerName.includes("readme") && lowerName.endsWith(".md") && readmeText === "") {
                 readmeText = strFromU8(file, true);
-                console.log(`✅ Found README: ${filename}`);
+                console.log(` Found README: ${filename}`);
             }
 
             const extMatch = lowerName.match(/\.(\w+)$/);
@@ -137,7 +137,7 @@ export async function extractZipFromUrlOrBuffer(input: string | Uint8Array) {
                 }
             }
         } catch (e) {
-            console.warn(`❌ Failed to decode ${filename}:`, e);
+            console.warn(` Failed to decode ${filename}:`, e);
         }
     }
 
@@ -253,10 +253,10 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
     }
 
 
-    // 👇 CALL THIS FIRST
+
     const logicFileSnippets = await getCodeSnippetsForGemini(owner, repo);
 
-    // 🧠 Then prepare the prompt for Gemini
+
     let prompt = `These are code snippets from a GitHub repo. Identify only the important core logic files (ignore UI, boilerplate, setup):\n\n`;
     for (const [filename, snippet] of Object.entries(logicFileSnippets)) {
         const snippetBlock = `// ${filename}\n${snippet}\n\n`;
@@ -279,7 +279,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
 
     const geminiReply = llm_important_files.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // 🧾 Extract file names
+    // Extract file names
     const detectedFiles: string[] = [];
     const fileLines = geminiReply.split("\n");
 
@@ -478,7 +478,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
                 const repoContent = await octokit.repos.getContent({ owner: simOwner, repo: simRepo, path: "" });
                 let fileTree = repoContent.data as any[];
 
-                // Optional: prioritize important filenames first
+                // prioritize important filenames first
                 fileTree = fileTree.sort((a, b) => {
                     const aImp = isImportantFile(a.name) ? -1 : 1;
                     const bImp = isImportantFile(b.name) ? -1 : 1;
@@ -520,7 +520,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
         User Code:\n${codeText.slice(0, 1000)}
         Similar README:\n${similarReadmeText.slice(0, 1000)}
         Similar Code:\n${similarCodeText.slice(0, 1000)}
-        if Risk level is moderate then plagarism score should be between 45- 60, when hight then >= 70 , when less then score should be less than 30
+        if Risk level is moderate then plagarism score should be between 45- 60, when high then >= 70 , when less then score should be less than 30
         Is there code/structure/text similarity?
         
         Return(*Strictly only in this format*):
@@ -575,14 +575,14 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
     // Check for fork status using GitHub API
     const isFork = repoInfo.data.fork === true;
 
-    // Heuristic checks (placeholder logic — you can improve it later)
+    // Heuristic checks (placeholder logic — i will improve it later**)
     const hasHighStructuralMatch = summary.toLowerCase().includes("structure");
-    const hasHumanComments = /#|\/\/|\/\*/.test(codeText);  // checks for human comments
-    const hasRandomVariableNames = /\b[a-z]{1,2}\b/.test(codeText); // checks for short/ambiguous variable names
+    const hasHumanComments = /#|\/\/|\/\*/.test(codeText);  
+    const hasRandomVariableNames = /\b[a-z]{1,2}\b/.test(codeText); 
 
     if (isFork) {
         adjustedPlagiarismScore *= 1.1; // Increase score by 20% if it's a fork
-        adjustedRiskPercentage += 15;
+        adjustedRiskPercentage += 5;
     }
 
     if (hasHighStructuralMatch) {
