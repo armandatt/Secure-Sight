@@ -587,7 +587,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
 
     if (hasHighStructuralMatch) {
         adjustedPlagiarismScore += 20;
-        adjustedRiskPercentage += 10;
+        // adjustedRiskPercentage += 10;
     }
 
     if (hasHumanComments || hasRandomVariableNames) {
