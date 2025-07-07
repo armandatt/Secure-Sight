@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client/edge';
 import { withAccelerate } from "@prisma/extension-accelerate";
 import { decode, sign, verify } from 'hono/jwt';
 import VerifyRouter from "./verify";
+import { constrainedMemory } from "process";
+import { error } from "console";
 
 
 // import { signupInput ,signinInput } from '../../../common/src/index';
@@ -64,6 +66,18 @@ userRouter.post('/signup', async (c) => {
 
 
   try {
+    const existingUser = await prisma.user.findUnique({
+      where: {
+        username: body.username
+      }
+    });
+
+    if (existingUser) {
+      console.error("user already exist")
+      // return c.json({ error: "User already exists" }, 400); // or 409 Conflict
+      return c.text("User Already Registered!!")
+    }
+
     const user = await prisma.user.create({
       data: {
         username: body.username,

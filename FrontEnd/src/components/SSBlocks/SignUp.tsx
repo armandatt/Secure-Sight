@@ -39,6 +39,10 @@ const SignUp = () => {
         try {
             const responce = await axios.post(`${BACKEND_URL}/api/v1/user/signup`, formData)
             const jwt = responce.data.jwt
+            if (!jwt) {
+            alert("Signup failed: Invalid token received.");
+            return;
+  }
             console.log("JWT:", jwt)
             localStorage.setItem("token", jwt)
             navigate("/dashboard")
@@ -93,6 +97,7 @@ const SignUp = () => {
                                     Email
                                 </Label>
                                 <Input
+                                    type="email"
                                     id="username"
                                     value={formData.username}
                                     onChange={handleChange}
