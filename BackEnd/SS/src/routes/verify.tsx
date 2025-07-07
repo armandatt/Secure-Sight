@@ -220,6 +220,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
     }
 
     const CODE_EXTENSIONS = ["py", "js", "ts", "cpp", "java", "go", "rb", "cs"];
+    
     function isCodeFile(path: string): boolean {
         return CODE_EXTENSIONS.some((ext) => path.endsWith("." + ext));
     }
@@ -376,7 +377,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
                 detectedExtensions,
             };
         } catch (err) {
-            console.warn("⚠️ Custom zipping failed, falling back to full repo ZIP", err);
+            console.warn(" Custom zipping failed, falling back to full repo ZIP", err);
 
             const fallbackZipUrl = `https://github.com/${owner}/${repo}/archive/refs/heads/${branch}.zip`;
             const { readmeText, codeText, detectedExtensions } = await extractZipFromUrlOrBuffer(fallbackZipUrl);

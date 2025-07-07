@@ -105,8 +105,8 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const handleLogout = () => {
   localStorage.removeItem('token');
-  setUser(null); // This clears the user state
-  navigate("/sign-in")// Or use `navigate("/signin")` if using React Router
+  setUser(null); 
+  navigate("/sign-in")
 };
 
   return (
@@ -220,7 +220,6 @@ const Dashboard = () => {
           <p className="text-gray-400">Choose a tool to start your security analysis</p>
         </div>
 
-        {/* Enhanced Feature Cards */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-12">
           {features.map((feature) => (
             <Card
