@@ -298,9 +298,9 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
     const geminiRawOutput = geminiReply;
 
     console.log("Important logic files detected:", importantLogicFiles);
-    // if (importantLogicFiles.length === 0) {
-    //     return c.json({ error: "No important logic files detected." }, 404);
-    // }
+    if (importantLogicFiles.length === 0) {
+        return c.json({ error: "No important logic files detected." }, 404);
+    }
     console.log("Original prompt sent to Gemini:", originalPrompt);
     console.log("Gemini raw output:", geminiRawOutput);
 
@@ -457,6 +457,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
     let similarCodeText = "";
     const similarRepos = await findSimilarRepos()
 
+    alert("i am here")
     if (similarRepos.length === 0) return c.json({ error: "No similar repositories found." }, 404);
 
     for (const similar of similarRepos) {
