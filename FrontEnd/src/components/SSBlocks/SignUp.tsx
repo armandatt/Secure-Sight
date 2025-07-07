@@ -41,6 +41,7 @@ const SignUp = () => {
             const jwt = responce.data.jwt
             if (!jwt) {
             alert("Signup failed: User Already Exist.");
+            setIsLoading(false)
             return;
   }
             console.log("JWT:", jwt)
