@@ -40,7 +40,7 @@ const SignUp = () => {
             const responce = await axios.post(`${BACKEND_URL}/api/v1/user/signup`, formData)
             const jwt = responce.data.jwt
             if (!jwt) {
-            alert("Signup failed: Invalid token received.");
+            alert("Signup failed: User Already Exist.");
             return;
   }
             console.log("JWT:", jwt)
