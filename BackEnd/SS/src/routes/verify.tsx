@@ -457,7 +457,7 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
     let similarCodeText = "";
     const similarRepos = await findSimilarRepos()
 
-    alert("i am here")
+    
     if (similarRepos.length === 0) return c.json({ error: "No similar repositories found." }, 404);
 
     for (const similar of similarRepos) {
@@ -514,8 +514,8 @@ VerifyRouter.post('/verifyWebsite', async (c) => {
         if (similarReadmeText && similarCodeText) break;
     }
 
-    console.log("Similar README text:", similarReadmeText);
-    console.log("Similar code text:", similarCodeText);
+    // console.log("Similar README text:", similarReadmeText);
+    // console.log("Similar code text:", similarCodeText);
 
     const comparisonPrompt = `
         User README:\n${readmeText.slice(0, 1000)}

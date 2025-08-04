@@ -80,7 +80,7 @@ const VerifyWebsites = () => {
           </Button>
           <div className="flex items-center gap-2">
             <Globe className="h-5 w-5 text-blue-500" />
-            <h1 className="text-xl font-bold text-white">Verify Websites</h1>
+            <h1 className="text-xl font-bold text-white">Project Authenticator</h1>
           </div>
         </div>
       </header>
@@ -88,7 +88,7 @@ const VerifyWebsites = () => {
       <main className="flex-1 px-6 py-8 md:px-10">
         <Card className="mx-auto max-w-3xl bg-[#13151f] text-white">
           <CardHeader>
-            <CardTitle>Website Plagiarism Scanner</CardTitle>
+            <CardTitle>Project Plagiarism Scanner</CardTitle>
             <CardDescription className="text-gray-400">
               Check if a website contains plagiarized content or copyright infringements
             </CardDescription>

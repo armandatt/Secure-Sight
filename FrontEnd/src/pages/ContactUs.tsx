@@ -63,7 +63,7 @@ export default function ContactPage() {
               <h3 className="text-xl font-bold mb-2">Email</h3>
               <p className="text-muted-foreground mb-4">For general inquiries and support</p>
               <a href="mailto:contact@securesight.com" className="text-primary hover:underline">
-                contact@securesight.com
+                thesecuresight@securesight.com
               </a>
             </CardContent>
           </Card>

@@ -57,7 +57,6 @@ const SignIn = () => {
 
         console.log("signedIn")
 
-        // Navigate after showing toast
         setTimeout(() => {
           navigate("/dashboard")
         }, 1500)
