@@ -39,9 +39,9 @@ const Dashboard = () => {
 
   const features = [
     {
-      id: "Project Authenticator",
-      title: "Verify Websites",
-      description: "Detect plagiarized content across websites and identify potential copyright infringements.",
+      id: "verify-websites",
+      title: "Project Authenticator",
+      description: "Detect plagiarized content across projects and identify potential copyright infringements.",
       icon: Globe,
       color: "bg-gradient-to-br from-blue-500 to-blue-600",
       stats: "98% accuracy",
