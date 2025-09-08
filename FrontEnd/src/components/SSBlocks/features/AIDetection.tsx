@@ -1,371 +1,592 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
-import { Link } from "react-router-dom"
-import { Bot, ArrowLeft, Sparkles, CheckCircle, Brain} from "lucide-react"
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Search, Shield, Code, FileText, CheckCircle, AlertTriangle, XCircle, GitBranch, Loader2 } from "lucide-react"
 import axios from "axios"
 import { BACKEND_URL } from "@/config"
-// import { Slider } from "@/components/ui/slider"
 
-const AIDetection = () => {
-  const [content, setContent] = useState("")
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisComplete, setAnalysisComplete] = useState(false)
-  const [analysisProgress, setAnalysisProgress] = useState(0)
-  const [analysisResult, setAnalysisResult] = useState<any>(null)
-  // const [threshold, setThreshold] = useState([75])
+const scanSteps = [
+  { id: 1, title: "Cloning repository...", description: "Fetching repository data" },
+  { id: 2, title: "Analyzing code structure...", description: "Examining file patterns" },
+  { id: 3, title: "Detecting similarities...", description: "Comparing with database" },
+  { id: 4, title: "Processing README...", description: "Evaluating documentation" },
+  { id: 5, title: "Calculating scores...", description: "Generating analysis report" },
+  { id: 6, title: "Finalizing results...", description: "Preparing dashboard" },
+  { id: 7, title: "Scan complete!", description: "Analysis ready for review" },
+]
 
-  const handleAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!content) return
+export default function RepoAnalysisPage() {
+  const [repoUrl, setRepoUrl] = useState("")
+  const [isScanned, setIsScanned] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [progress, setProgress] = useState(0)
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null)
 
-    setIsAnalyzing(true)
-    setAnalysisComplete(false)
-    setAnalysisProgress(0)
-    setAnalysisResult(null)
+  const handleScan = async () => {
+    setIsScanning(true)
+    setIsScanned(false)
+    setCurrentStep(0)
+    setProgress(0)
 
-    // Simulate analysis progress
-    const token = localStorage.getItem("token")
-    if (!token) {
-      return alert("You must be logged in to analyze content.")
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await axios.post(
+        `${BACKEND_URL}/api/v1/verify/verifyWebsite`,
+        { repoUrl },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log("Response from backend:", response.data);
+
+      setAiAnalysis(response.data.PlagiarismAnalysis);
+
+      for (let i = 0; i < scanSteps.length; i++) {
+        setCurrentStep(i);
+        // Increase step duration slightly to extend total animation time
+        const stepDuration = i === scanSteps.length - 1 ? 500 : 1700 + Math.random() * 1100;
+        const stepProgress = ((i + 1) / scanSteps.length) * 100;
+
+        await new Promise((resolve) => {
+          const startTime = Date.now();
+          const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const currentProgress = Math.min(stepProgress, (elapsed / stepDuration) * stepProgress);
+            setProgress(currentProgress);
+
+            if (elapsed < stepDuration) {
+              requestAnimationFrame(animate);
+            } else {
+              resolve(void 0);
+            }
+          };
+          animate();
+        });
+      }
+
+      setIsScanning(false);
+      setIsScanned(true);
+    } catch (error) {
+      console.error("Error scanning repo:", error);
+      setIsScanning(false);
     }
-    console.log(content);
-    const response = await axios.post(`${BACKEND_URL}/api/v1/verify/verifyAiGeneratedContent`, { content }, { headers: { Authorization: `${token}` } })
+  };
 
-    if (response.status !== 200) {
-      setIsAnalyzing(false)
-      return alert("Error analyzing content. Please try again.")
-    }
-
-    const data_set = await response.data.AiTextAnalysis;
-    if (response.status == 200) {
-      setAnalysisResult(data_set);
-    } else {
-      console.error("Error fetching AI analysis:", response.statusText);
-    }
-
-    const interval = setInterval(() => {
-      setAnalysisProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsAnalyzing(false)
-          setAnalysisComplete(true)
-          return 100
-        }
-        return prev + 10
-      })
-    }, 500)
-  }
-
-  function ConfidenceBadge({ confidence }: { confidence: number }) {
-    let label = "";
-    let bgColor = "";
-    let textColor = "";
-
-    if (confidence >= 75) {
-      label = "High Confidence";
-      bgColor = "bg-purple-500/20";
-      textColor = "text-purple-500";
-    } else if (confidence >= 50) {
-      label = "Medium Confidence";
-      bgColor = "bg-yellow-400/20";
-      textColor = "text-yellow-400";
-    } else {
-      label = "Low Confidence";
-      bgColor = "bg-red-500/20";
-      textColor = "text-red-500";
-
-    }
-    return (
-      console.log(confidence, label, bgColor, textColor),
-      <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-sm ${bgColor} ${textColor}`}>
-        <span>{label}</span>
-        <span className="font-bold">{confidence}%</span>
-      </div>
-    );
-
-  }
-
-  function ProgressBar({ value }: { value: number }) {
-    return (<div className="h-4 rounded-full bg-gray-700">
-
-      <div className="h-4 rounded-full bg-purple-500" style={{ width: `${value}%`}}></div>
-    </div>)
-    };
-
-    return (
-      <div className="flex min-h-screen flex-col bg-[#0c0e16]">
-        <header className="border-b border-gray-800 bg-[#0c0e16]">
-          <div className="flex h-16 items-center px-6 md:px-10">
-            <Button asChild variant="ghost" className="mr-4 text-gray-300 hover:text-white">
-              <Link to="/dashboard">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
-              </Link>
-            </Button>
-            <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-purple-500" />
-              <h1 className="text-xl font-bold text-white">AI Content Detection</h1>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-card to-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className="h-8 w-8 text-primary transition-transform hover:scale-110 duration-300" />
+              <h1 className="text-2xl font-bold text-foreground">SecureSight</h1>
+              <Badge variant="secondary" className="bg-primary/20 text-primary animate-pulse">
+                Premium
+              </Badge>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" className="hover:scale-105 transition-transform duration-200">
+                <Search className="h-4 w-4" />
+              </Button>
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center hover:scale-110 transition-transform duration-200 cursor-pointer">
+                <span className="text-sm font-medium text-primary-foreground">R</span>
+              </div>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="flex-1 px-6 py-8 md:px-10">
-          <Card className="mx-auto max-w-3xl bg-[#13151f] text-white">
-            <CardHeader>
-              <CardTitle>AI Content Detector</CardTitle>
-              <CardDescription className="text-gray-400">
-                Identify content generated by AI tools like ChatGPT, Bard, and other language models
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAnalyze} className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="content" className="text-sm font-medium text-gray-300">
-                    Paste Text to Analyze
-                  </label>
-                  <Textarea
-                    id="content"
-                    placeholder="Paste the text you want to analyze for AI-generated content..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    rows={8}
-                    className="border-gray-700 bg-[#1c1f2e] text-white"
-                  />
-                </div>
+      <div className="container mx-auto px-6 py-8">
+        {/* Repository Input */}
+        <Card className="mb-8 bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GitBranch className="h-5 w-5 animate-pulse" />
+              Enter GitHub Repository Link
+              <Badge variant="destructive" className="ml-2 animate-bounce">
+                README required
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4">
+              <Input
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                placeholder="https://github.com/username/repository"
+                className="flex-1 bg-input border-border transition-all duration-200 focus:scale-[1.02]"
+                disabled={isScanning}
+              />
+              <Button
+                onClick={handleScan}
+                disabled={isScanning}
+                className="bg-primary hover:bg-primary/90 hover:scale-105 transition-all duration-200 disabled:opacity-50"
+              >
+                {isScanning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                {isScanning ? "Scanning..." : "Scan"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-                {/* <div className="space-y-2">
+        {isScanning && (
+          <Card className="mb-8 bg-gradient-to-r from-primary/20 to-primary/10 border-primary/30 animate-in slide-in-from-top duration-500">
+            <CardContent className="p-6">
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="threshold" className="text-sm font-medium text-gray-300">
-                    Detection Threshold
-                  </label>
-                  <span className="text-sm text-gray-400">{threshold[0]}%</span>
-                </div>
-                <Slider
-                  id="threshold"
-                  min={50}
-                  max={95}
-                  step={5}
-                  value={threshold}
-                  onValueChange={setThreshold}
-                  className="py-2"
-                />
-                <p className="text-xs text-gray-500">
-                  Higher threshold means fewer false positives but may miss some AI content
-                </p>
-              </div> */}
-
-                <Button
-                  type="submit"
-                  disabled={isAnalyzing || !content}
-                  className="bg-purple-500 text-white hover:bg-purple-600"
-                >
-                  {isAnalyzing ? "Analyzing..." : "Analyze Content"}
-                  <Sparkles className="ml-2 h-4 w-4" />
-                </Button>
-              </form>
-
-              {isAnalyzing && (
-                <div className="mt-6 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span>Analyzing content...</span>
-                    <span>{analysisProgress}%</span>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <GitBranch className="h-6 w-6 text-primary animate-pulse" />
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping"></div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-primary">{scanSteps[currentStep]?.title}</h3>
+                      <p className="text-sm text-muted-foreground">{scanSteps[currentStep]?.description}</p>
+                    </div>
                   </div>
-                  <Progress value={analysisProgress} className="h-2 bg-gray-700" indicatorClassName="bg-purple-500" />
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-primary">{Math.round(progress)}%</div>
+                    <div className="text-sm text-muted-foreground">
+                      Step {currentStep + 1} of {scanSteps.length}
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              {analysisComplete && (
-                <div className="mt-6 space-y-4">
-                  <Alert className="border-purple-500/20 bg-purple-500/10">
-                    <Bot className="h-4 w-4 text-purple-500" />
-                    {analysisResult?.is_ai_generated ? (
-                      <AlertTitle className="text-purple-500 ">AI Content Detected</AlertTitle>
-                    ) : (
-                      <AlertTitle className="text-green-500">Human Content Detected</AlertTitle>
-                    )}
-                    {analysisResult?.is_ai_generated ? (
-                      <AlertDescription className="text-purple-500 ">This content was likely generated by an AI language model.</AlertDescription>
-                    ) : (
-                      <AlertTitle className="text-green-500">This content was likely Written by human.</AlertTitle>
-                    )}
-                    {/* <AlertTitle className="text-purple-500">AI-Generated Content Detected</AlertTitle> */}
-                    <AlertDescription className="text-gray-300">
-
-                    </AlertDescription>
-                  </Alert>
-
-                  <Tabs defaultValue="results" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-[#1c1f2e]">
-                      <TabsTrigger value="results">Results</TabsTrigger>
-                      <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                      {/* <TabsTrigger value="models">AI Models</TabsTrigger> */}
-                    </TabsList>
-                    <TabsContent value="results" className="mt-4 space-y-4">
-                      <div className="rounded-lg bg-[#1c1f2e] p-4">
-                        <div className="mb-4 flex items-center justify-between">
-                          <h3 className="text-lg font-medium">AI Probability</h3>
-                          <ConfidenceBadge confidence={analysisResult?.Confidence ?? 0} />
-                        </div>
-                        <ProgressBar value={analysisResult?.Confidence ?? 0} />
-                        <div className="mt-2 flex justify-between text-xs text-gray-400">
-                          <span>0%</span>
-                          <span>50%</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-lg bg-[#1c1f2e] p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="rounded-full bg-purple-500/20 p-2">
-                              <Bot className="h-4 w-4 text-purple-500" />
-                            </div>
-                            <h3 className="font-medium">AI Content</h3>
-                          </div>
-                          <div className="mt-3 text-center">
-                            <span className="text-3xl font-bold text-purple-500">{analysisResult?.Confidence ?? 0}</span>
-                            <p className="mt-1 text-sm text-gray-400">{analysisResult?.is_ai_generated}</p>
-                          </div>
-                        </div>
-
-                        <div className="rounded-lg bg-[#1c1f2e] p-4">
-                          <div className="flex items-center gap-2">
-                            <div className="rounded-full bg-green-500/20 p-2">
-                              <Brain className="h-4 w-4 text-green-500" />
-                            </div>
-                            <h3 className="font-medium">Human Content</h3>
-                          </div>
-                          <div className="mt-3 text-center">
-                            <span className="text-3xl font-bold text-green-500">{analysisResult?.humanContentConfidence}</span>
-                            <p className="mt-1 text-sm text-gray-400">{analysisResult?.humanContent}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="analysis" className="mt-4">
-                      <div className="rounded-lg bg-[#1c1f2e] p-4">
-                        <h3 className="mb-3 text-lg font-medium">Content Analysis</h3>
-                        <div className="space-y-4">
-                          {analysisResult?.is_ai_generated ? (<div>
-                            <h4 className="mb-2 font-medium text-white">AI Indicators</h4>
-                            <ul className="space-y-2 text-sm text-gray-300">
-                              <li className="flex items-start gap-2">
-                                <CheckCircle className="mt-0.5 h-4 w-4 text-purple-500" />
-                                <span>{analysisResult?.reason}</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle className="mt-0.5 h-4 w-4 text-purple-500" />
-                                <span>Predictable sentence structures and transitions</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle className="mt-0.5 h-4 w-4 text-purple-500" />
-                                <span>Lack of personal anecdotes or unique perspectives</span>
-                              </li>
-                              <li className="flex items-start gap-2">
-                                <CheckCircle className="mt-0.5 h-4 w-4 text-purple-500" />
-                                <span>Generic examples and explanations</span>
-                              </li>
-                            </ul>
-                          </div>) : (
-                            <div>
-                              <h4 className="mb-2 font-medium text-white">Human Indicators</h4>
-                              <ul className="space-y-2 text-sm text-gray-300">
-                                <li className="flex items-start gap-2">
-                                  <CheckCircle className="mt-0.5 h-4 w-4 text-green-500" />
-                                  <span>Unique insights and personal anecdotes</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                  <CheckCircle className="mt-0.5 h-4 w-4 text-green-500" />
-                                  <span>{analysisResult?.humanContentReason}</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                  <CheckCircle className="mt-0.5 h-4 w-4 text-green-500" />
-                                  <span>Emotional tone and subjective opinions</span>
-                                </li>
-                              </ul>
-                            </div>
-                          )}
-
-
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    {/* <TabsContent value="models" className="mt-4">
-                      <div className="rounded-lg bg-[#1c1f2e] p-4">
-                        <h3 className="mb-3 text-lg font-medium">Detected AI Models</h3>
-                        <p className="mb-4 text-sm text-gray-400">
-                          Our system can identify content from various AI language models with different confidence
-                          levels.
-                        </p>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between rounded bg-[#0c0e16] p-3">
-                            <div className="flex items-center gap-2">
-                              <Zap className="h-4 w-4 text-purple-500" />
-                              <span className="font-medium">GPT-4</span>
-                            </div>
-                            <div className="text-sm text-purple-500">87% match</div>
-                          </div>
-                          <div className="flex items-center justify-between rounded bg-[#0c0e16] p-3">
-                            <div className="flex items-center gap-2">
-                              <Zap className="h-4 w-4 text-purple-500" />
-                              <span className="font-medium">ChatGPT (GPT-3.5)</span>
-                            </div>
-                            <div className="text-sm text-purple-500">92% match</div>
-                          </div>
-                          <div className="flex items-center justify-between rounded bg-[#0c0e16] p-3">
-                            <div className="flex items-center gap-2">
-                              <Zap className="h-4 w-4 text-purple-500" />
-                              <span className="font-medium">Google Bard</span>
-                            </div>
-                            <div className="text-sm text-purple-500">64% match</div>
-                          </div>
-                          <div className="flex items-center justify-between rounded bg-[#0c0e16] p-3">
-                            <div className="flex items-center gap-2">
-                              <Zap className="h-4 w-4 text-purple-500" />
-                              <span className="font-medium">Claude</span>
-                            </div>
-                            <div className="text-sm text-purple-500">58% match</div>
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent> */}
-                  </Tabs>
+                <div className="space-y-2">
+                  <Progress value={progress} className="h-3 transition-all duration-300" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>0%</span>
+                    <span className="animate-pulse">Processing...</span>
+                    <span>100%</span>
+                  </div>
                 </div>
-              )}
+
+                {/* Step indicators */}
+                <div className="flex justify-between items-center pt-2">
+                  {scanSteps.map((step, index) => (
+                    <div
+                      key={step.id}
+                      className={`flex flex-col items-center transition-all duration-300 ${index <= currentStep ? "text-primary" : "text-muted-foreground"
+                        }`}
+                    >
+                      <div
+                        className={`w-3 h-3 rounded-full transition-all duration-300 ${index < currentStep
+                          ? "bg-primary scale-110"
+                          : index === currentStep
+                            ? "bg-primary animate-pulse scale-125"
+                            : "bg-muted"
+                          }`}
+                      />
+                      <span className="text-xs mt-1 hidden sm:block">{step.id}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </CardContent>
-            <CardFooter className="flex flex-col items-start border-t border-gray-800 text-sm text-gray-400">
-              <p>
-                Our AI detection engine uses advanced machine learning to identify content generated by various AI models.
-              </p>
-              <p className="mt-2">
-                For document plagiarism checks, try our{" "}
-                <Link to="/verify-documents" className="text-blue-400 hover:underline">
-                  Document Verification
-                </Link>{" "}
-                tool.
-              </p>
-            </CardFooter>
           </Card>
-        </main>
+        )}
 
-        <footer className="border-t border-gray-800 py-6 text-center text-sm text-gray-400">
-          <p>© 2025 SecureSight. All rights reserved.</p>
-        </footer>
+        {/* Scan Status */}
+        {isScanned && !isScanning && (
+          <Card className="mb-8 bg-gradient-to-r from-chart-3/20 to-chart-3/10 border-chart-3/30 animate-in slide-in-from-top duration-500">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-6 w-6 text-chart-3 animate-pulse" />
+                <div>
+                  <h3 className="font-semibold text-chart-3">Scan Complete</h3>
+                  <p className="text-sm text-muted-foreground">We've analyzed the repository content for plagiarism.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Analysis Tabs - Only show when scan is complete */}
+        {isScanned && !isScanning && (
+          <Tabs defaultValue="summary" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 bg-card/50 border border-border">
+              <TabsTrigger
+                value="summary"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200 hover:scale-105"
+              >
+                Summary
+              </TabsTrigger>
+              <TabsTrigger
+                value="code"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200 hover:scale-105"
+              >
+                Code
+              </TabsTrigger>
+              <TabsTrigger
+                value="readme"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200 hover:scale-105"
+              >
+                README
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="summary" className="space-y-6 animate-in fade-in duration-500">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Overall Plagiarism */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+                  <CardHeader>
+                    <CardTitle>Overall Plagiarism</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="relative">
+                      <div className="flex items-center justify-center">
+                        <div className="relative w-32 h-32">
+                          <svg
+                            className="w-32 h-32 transform -rotate-90 transition-transform duration-1000 hover:rotate-0"
+                            viewBox="0 0 36 36"
+                          >
+                            <path
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              className="text-muted"
+                            />
+                            <path
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeDasharray="58, 100"
+                              className="text-chart-5 animate-pulse"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-3xl font-bold hover:scale-110 transition-transform duration-200">
+                              {aiAnalysis ? `${aiAnalysis.overallPlagiarism}%` : "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-center text-sm text-muted-foreground mt-2">
+                        Based on code similarity detection
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 hover:translate-x-2 transition-transform duration-200">
+                        <div className="w-3 h-3 rounded-full bg-chart-3 animate-pulse"></div>
+                        <Badge
+                          variant="secondary"
+                          className="bg-chart-3/20 text-chart-3 hover:scale-105 transition-transform duration-200"
+                        >
+                          {aiAnalysis ? (aiAnalysis.IdeaUniqueness) : "N/A"}
+                        </Badge>
+                        <span className="text-sm">Idea Uniqueness</span>
+                      </div>
+                      <div className="flex items-center gap-2 hover:translate-x-2 transition-transform duration-200">
+                        <div className="w-2 h-2 rounded-full bg-muted-foreground"></div>
+                        <span className="text-sm text-muted-foreground">Human-like comments: {aiAnalysis.hasHumanComments}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Code Analysis */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Code className="h-5 w-5 animate-pulse" />
+                      Code Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">Original Code Score</span>
+                        <span className="text-chart-3 font-bold hover:scale-110 transition-transform duration-200">
+                          {aiAnalysis ? `${aiAnalysis.AdjustedCodeScore}%` : "N/A"}
+                        </span>
+                      </div>
+                      <Progress value={aiAnalysis.AdjustedCodeScore} className="h-2 transition-all duration-1000 hover:h-3" />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border">
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileText className="h-4 w-4 text-chart-3 animate-pulse" />
+                        <span className="font-medium">README Analysis</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm">Idea Originality Score</span>
+                        <Badge variant="destructive" className="animate-bounce">
+                          {aiAnalysis ? `${aiAnalysis.ReadmeScore}%` : "N/A"}
+                        </Badge>
+                      </div>
+                      <Progress value={aiAnalysis.ReadmeScore} className="h-2 transition-all duration-1000 hover:h-3" />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Bottom Stats */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-chart-1/20 hover:bg-chart-1/30 transition-colors duration-200">
+                        <GitBranch className="h-4 w-4 text-chart-1" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Fork Status</p>
+                        <Badge
+                          variant="secondary"
+                          className="bg-muted text-muted-foreground hover:scale-105 transition-transform duration-200"
+                        >
+                          {aiAnalysis.isForked ? "Forked" : "Original"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-chart-4/20 hover:bg-chart-4/30 transition-colors duration-200">
+                        <FileText className="h-4 w-4 text-chart-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Human Comments</p>
+                        <Badge variant="destructive" className="animate-pulse">
+                          {aiAnalysis.hasHumanComments ? "Present" : "Absent"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-chart-5/20 hover:bg-chart-5/30 transition-colors duration-200">
+                        <Code className="h-4 w-4 text-chart-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Random Variables</p>
+                        <Badge
+                          variant="secondary"
+                          className="bg-muted text-muted-foreground hover:scale-105 transition-transform duration-200"
+                        >
+                          {aiAnalysis.hasRandomVariableNames ? "Yes" : "No"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-105">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-chart-4/20 hover:bg-chart-4/30 transition-colors duration-200">
+                        <AlertTriangle className="h-4 w-4 text-chart-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Structural Match</p>
+                        <Badge variant="destructive" className="animate-pulse">
+                          {aiAnalysis.hasHighStructuralMatch ? "Yes" : "No"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="code" className="space-y-6 animate-in fade-in duration-500">
+              <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Code className="h-5 w-5 animate-pulse" />
+                    Code Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold mb-3">Code Scores</h4>
+                      <div className="space-y-4">
+                        <div className="hover:translate-x-2 transition-transform duration-200">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm">Original Code Score</span>
+                            <span className="text-sm font-medium text-chart-3">{100 - aiAnalysis.AdjustedCodeScore}</span>
+                          </div>
+                          <Progress value={100 - aiAnalysis.OriginalCodeScore} className="h-2 transition-all duration-1000 hover:h-3" />
+                        </div>
+                        <div className="hover:translate-x-2 transition-transform duration-200">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm">Adjusted Code Score</span>
+                            <span className="text-sm font-medium text-chart-3">{100 - aiAnalysis.AdjustedCodeScore}</span>
+                          </div>
+                          <Progress value={100 - aiAnalysis.AdjustedCodeScore} className="h-2 transition-all duration-1000 hover:h-3" />
+                        </div>
+                        {/* <div className="hover:translate-x-2 transition-transform duration-200">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm">Original Code Risk</span>
+                            <span className="text-sm font-medium text-chart-3">5/10</span>
+                          </div>
+                          <Progress value={50} className="h-2 transition-all duration-1000 hover:h-3" />
+                        </div> */}
+                        {/* <div className="hover:translate-x-2 transition-transform duration-200">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm">Adjusted Code Risk</span>
+                            <span className="text-sm font-medium text-chart-3">5/10</span>
+                          </div>
+                          <Progress value={50} className="h-2 transition-all duration-1000 hover:h-3" />
+                        </div> */}
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-3">Code Analysis Flags</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-all duration-200 hover:scale-105">
+                          <span className="text-sm">Is Fork</span>
+                          <Badge variant="secondary" className="bg-chart-3/20 text-chart-3">
+                            {aiAnalysis.isForked ? "True" : "False"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-all duration-200 hover:scale-105">
+                          <span className="text-sm">High Structural Match</span>
+                          <Badge variant="secondary" className="bg-chart-3/20 text-chart-3">
+                            {aiAnalysis.hasHighStructuralMatch ? "True" : "False"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-all duration-200 hover:scale-105">
+                          <span className="text-sm">Human Comments</span>
+                          <Badge variant="secondary" className="bg-chart-3/20 text-chart-3">
+                            {aiAnalysis.hasHumanComments ? "True" : "False"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-all duration-200 hover:scale-105">
+                          <span className="text-sm">Random Variable Names</span>
+                          <Badge variant="secondary" className="bg-chart-3/20 text-chart-3">
+                            {aiAnalysis.hasRandomVariableNames ? "True" : "False"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-all duration-200 hover:scale-105">
+                          <span className="text-sm">Large Duplicated Blocks</span>
+                          <Badge variant="secondary" className="bg-chart-3/20 text-chart-3">
+                            {aiAnalysis.hasLargeDuplicatedBlocks ? "True" : "False"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-all duration-200 hover:scale-105">
+                          <span className="text-sm">Identical Dependency List</span>
+                          <Badge variant="secondary" className="bg-chart-3/20 text-chart-3">
+                            {aiAnalysis.hasIdenticalDependencyList ? "True" : "False"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* <div>
+                      <h4 className="font-semibold mb-3">Matched Code Analysis</h4>
+                      <div className="p-4 rounded-lg bg-muted/10 border border-border hover:bg-muted/20 transition-all duration-200">
+                        <p className="text-sm text-muted-foreground">
+                          No meaningful code matches found. The user code appears to be empty or minimal, while the
+                          similar code contains GitHub Actions workflow configuration, maintainer lists, and Next.js
+                          React component structure.
+                        </p>
+                      </div>
+                    </div> */}
+
+                    <div>
+                      <h4 className="font-semibold mb-3">Code Summary</h4>
+                      <div className="p-4 rounded-lg bg-muted/10 border border-border hover:bg-muted/20 transition-all duration-200">
+                        <p className="text-sm text-muted-foreground">
+                          {aiAnalysis.CodeSummary || "No summary available."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="readme" className="space-y-6 animate-in fade-in duration-500">
+              <Card className="bg-card/80 backdrop-blur-sm border-border hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 animate-pulse" />
+                    README Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold mb-4">README Metrics</h4>
+                      <div className="space-y-4">
+                        <div className="hover:translate-x-2 transition-transform duration-200">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-sm">README Score</span>
+                            <span className="text-sm font-medium text-chart-3">{100 - aiAnalysis.ReadmeScore}</span>
+                          </div>
+                          <Progress value={100 - aiAnalysis.ReadmeScore} className="h-2 transition-all duration-1000 hover:h-3" />
+                        </div>
+
+                        <div className="flex items-center gap-3 p-3 rounded-lg bg-chart-3/10 hover:bg-chart-3/20 transition-all duration-200 hover:scale-105">
+                          <CheckCircle className="h-5 w-5 text-chart-3 animate-pulse" />
+                          <div>
+                            <span className="text-sm font-medium">Idea Uniqueness</span>
+                            <Badge variant="secondary" className="ml-2 bg-chart-3/20 text-chart-3">
+                              {aiAnalysis.IdeaUniqueness}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold mb-4">Content Analysis</h4>
+                      <div className="space-y-4">
+                        {/* <div>
+                          <h5 className="text-sm font-medium mb-2">Matched README Content</h5>
+                          <div className="p-3 rounded-lg bg-muted/10 border border-border hover:bg-muted/20 transition-all duration-200">
+                            <p className="text-sm text-muted-foreground">
+                              * None (only "# React" vs "# React Release Scripts")
+                            </p>
+                          </div>
+                        </div> */}
+
+                        <div>
+                          <h5 className="text-sm font-medium mb-2">README Summary</h5>
+                          <div className="p-3 rounded-lg bg-muted/10 border border-border hover:bg-muted/20 transition-all duration-200">
+                            <p className="text-sm text-muted-foreground">
+                              {aiAnalysis.ReadmeSummary || "No summary available."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
-    )
-  }
-
-  export default AIDetection
-
+    </div>
+  )
+}
