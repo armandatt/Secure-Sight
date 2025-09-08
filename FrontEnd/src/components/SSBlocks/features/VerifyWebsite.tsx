@@ -17,9 +17,7 @@ import {
   GitBranch,
   Loader2,
   Sparkles,
-  Bell,
   LogOut,
-  User,
   ArrowLeft,
 } from "lucide-react"
 import axios from "axios"

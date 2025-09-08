@@ -8,7 +8,7 @@ import Dashboard from './pages/DashBoard'
 import VerifyWebsites from './components/SSBlocks/features/VerifyWebsite'
 import PhishingEmails from './components/SSBlocks/features/PhishingEmail'
 import VerifyDocuments from './components/SSBlocks/features/VerifyDocument'
-import AIDetection from './components/SSBlocks/features/AIDetection'
+// import AIDetection from './components/SSBlocks/features/AIDetection'
 import AboutUsPage from './pages/AboutUS'
 import ContactPage from './pages/ContactUs'
 import SolutionsPage from './pages/SolutionsPage'
@@ -33,7 +33,7 @@ function App() {
           <Route path="/verify-websites" element={<VerifyWebsites />} />
           <Route path="/phishing-emails" element={<PhishingEmails />} />
           <Route path="/verify-documents" element={<VerifyDocuments />} />
-          <Route path="/ai-detection" element={<AIDetection />} />
+          {/* <Route path="/ai-detection" element={<AIDetection />} /> */}
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/solutions" element={<SolutionsPage/>} />

@@ -32,11 +32,11 @@ export function InteractiveGauge({ value, size = 200, strokeWidth = 8, showPulse
     return '#ef4444' // red-500
   }
 
-  const getRiskLevel = (score: number) => {
-    if (score <= 30) return 'Low'
-    if (score <= 70) return 'Medium'
-    return 'High'
-  }
+  // const getRiskLevel = (score: number) => {
+  //   if (score <= 30) return 'Low'
+  //   if (score <= 70) return 'Medium'
+  //   return 'High'
+  // }
 
   return (
     <div 

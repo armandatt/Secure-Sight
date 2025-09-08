@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
-import { GitFork, MessageSquare, Shuffle, Eye, Star, Users, Calendar } from 'lucide-react'
+import { GitFork, MessageSquare, Shuffle, Eye } from 'lucide-react'
 
 interface FloatingStatsProps {
   stats: {
